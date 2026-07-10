@@ -15,6 +15,8 @@
 [![Build Status](https://ci.openware.work/api/badges/openware/peatio/status.svg)](https://ci.openware.work/openware/peatio)
 [![Telegram Chat](https://cdn.rawgit.com/Patrolavia/telegram-badge/8fe3382b/chat.svg)](https://t.me/peatio)
 
+**Exchange backend for exchange.صراف.com**
+
 ## What is Peatio
 
 Peatio is a free and open-source crypto-currency exchange implementation with the Rails framework.
