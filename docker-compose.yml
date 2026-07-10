@@ -1,0 +1,191 @@
+version: '3.8'
+
+x-defaults: &defaults
+  restart: always
+  networks:
+    - exchange
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
+
+services:
+  mysql:
+    <<: *defaults
+    image: mysql:8.0
+    container_name: exchange-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme}
+      MYSQL_DATABASE: peatio_production
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    <<: *defaults
+    image: redis:7-alpine
+    container_name: exchange-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    <<: *defaults
+    image: rabbitmq:3.13-management-alpine
+    container_name: exchange-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-peatio}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-changeme}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  peatio:
+    <<: *defaults
+    build:
+      context: .
+      args:
+        RAILS_ENV: production
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: exchange-peatio:latest
+    container_name: exchange-peatio
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USER: root
+      DATABASE_PASS: ${MYSQL_ROOT_PASSWORD:-changeme}
+      DATABASE_NAME: peatio_production
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-peatio}:${RABBITMQ_PASS:-changeme}@rabbitmq:5672
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      MANAGEMENT_API_V1_PRIVATE_KEY: ${MANAGEMENT_API_V1_PRIVATE_KEY}
+      MANAGEMENT_API_V1_PUBLIC_KEY: ${MANAGEMENT_API_V1_PUBLIC_KEY}
+      EVENTS_API_PRIVATE_KEY: ${EVENTS_API_PRIVATE_KEY}
+      EVENTS_API_PUBLIC_KEY: ${EVENTS_API_PUBLIC_KEY}
+      BARONG_DOMAIN: http://barong:3001
+      URL_ROOT_PATH: /
+      PORT: 3000
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-8}
+      TIMEZONE: ${TIMEZONE:-UTC}
+      CURRENCIES_CONFIG: /home/app/config/seed/currencies.yml
+      MARKETS_CONFIG: /home/app/config/seed/markets.yml
+      WALLETS_CONFIG: /home/app/config/seed/wallets.yml
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/seed:/home/app/config/seed:ro
+      - peatio-storage:/home/app/storage
+      - peatio-log:/home/app/log
+    command: >
+      sh -c "bundle exec rake db:create db:migrate db:seed &&
+             bundle exec puma --config config/puma.rb"
+
+  peatio-daemons:
+    <<: *defaults
+    build:
+      context: .
+      args:
+        RAILS_ENV: production
+    image: exchange-peatio:latest
+    container_name: exchange-peatio-daemons
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USER: root
+      DATABASE_PASS: ${MYSQL_ROOT_PASSWORD:-changeme}
+      DATABASE_NAME: peatio_production
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-peatio}:${RABBITMQ_PASS:-changeme}@rabbitmq:5672
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      TIMEZONE: ${TIMEZONE:-UTC}
+    volumes:
+      - peatio-storage:/home/app/storage
+      - peatio-log:/home/app/log
+    command: >
+      sh -c "bundle exec rake jobs:work"
+
+  barong:
+    <<: *defaults
+    image: openware/barong:latest
+    container_name: exchange-barong
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USER: root
+      DATABASE_PASS: ${MYSQL_ROOT_PASSWORD:-changeme}
+      DATABASE_NAME: barong_production
+      REDIS_URL: redis://redis:6379/1
+      BARONG_JWT_PUBLIC_KEY: ${BARONG_JWT_PUBLIC_KEY}
+      BARONG_JWT_PRIVATE_KEY: ${BARONG_JWT_PRIVATE_KEY}
+      SECRET_KEY_BASE: ${BARONG_SECRET_KEY_BASE}
+      APP_NAME: "exchange.صراف.com"
+      PORT: 3001
+      WEB_CONCURRENCY: 2
+      RAILS_MAX_THREADS: 4
+    ports:
+      - "3001:3001"
+    volumes:
+      - barong-storage:/home/app/storage
+      - barong-log:/home/app/log
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  peatio-storage:
+  peatio-log:
+  barong-storage:
+  barong-log:
+
+networks:
+  exchange:
+    name: exchange-network
+    driver: bridge

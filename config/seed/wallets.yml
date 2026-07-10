@@ -1,0 +1,89 @@
+- name:                Deposit Wallet BTC
+  kind:                deposit
+  blockchain_key:      btc-mainnet
+  gateway:             bitcoind
+  settings:
+    uri:               http://user:password@bitcoin-node:8332
+  currencies:
+    - btc
+
+- name:                Deposit Wallet ETH
+  kind:                deposit
+  blockchain_key:      eth-mainnet
+  gateway:             geth
+  settings:
+    uri:               http://user:password@eth-node:8545
+  currencies:
+    - eth
+    - usdt
+    - usdc
+    - trst
+
+- name:                Deposit Wallet BSC
+  kind:                deposit
+  blockchain_key:      bsc-mainnet
+  gateway:             geth
+  settings:
+    uri:               http://user:password@bsc-node:8545
+  currencies:
+    - bnb
+
+- name:                Hot Wallet BTC
+  kind:                hot
+  blockchain_key:      btc-mainnet
+  gateway:             bitcoind
+  settings:
+    uri:               http://user:password@bitcoin-node:8332
+  currencies:
+    - btc
+
+- name:                Hot Wallet ETH
+  kind:                hot
+  blockchain_key:      eth-mainnet
+  gateway:             geth
+  settings:
+    uri:               http://user:password@eth-node:8545
+  currencies:
+    - eth
+    - usdt
+    - usdc
+    - trst
+
+- name:                Hot Wallet BSC
+  kind:                hot
+  blockchain_key:      bsc-mainnet
+  gateway:             geth
+  settings:
+    uri:               http://user:password@bsc-node:8545
+  currencies:
+    - bnb
+
+- name:                Warm Wallet BTC
+  kind:                warm
+  blockchain_key:      btc-mainnet
+  gateway:             bitcoind
+  settings:
+    uri:               http://user:password@bitcoin-node:8332
+  currencies:
+    - btc
+
+- name:                Warm Wallet ETH
+  kind:                warm
+  blockchain_key:      eth-mainnet
+  gateway:             geth
+  settings:
+    uri:               http://user:password@eth-node:8545
+  currencies:
+    - eth
+    - usdt
+    - usdc
+    - trst
+
+- name:                Warm Wallet BSC
+  kind:                warm
+  blockchain_key:      bsc-mainnet
+  gateway:             geth
+  settings:
+    uri:               http://user:password@bsc-node:8545
+  currencies:
+    - bnb

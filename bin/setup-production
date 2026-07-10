@@ -1,0 +1,57 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "================================"
+echo " exchange.صراف.com - Setup"
+echo "================================"
+
+cd "$(dirname "$0")/.."
+
+# Load .env
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
+echo ""
+echo "1. Building Docker images..."
+docker compose build
+
+echo ""
+echo "2. Starting infrastructure (MySQL, Redis, RabbitMQ)..."
+docker compose up -d mysql redis rabbitmq
+
+echo "   Waiting for services to be healthy..."
+sleep 15
+
+echo ""
+echo "3. Creating databases..."
+docker compose run --rm peatio sh -c "bundle exec rake db:create" 2>/dev/null || true
+
+echo ""
+echo "4. Running migrations..."
+docker compose run --rm peatio bundle exec rake db:migrate
+
+echo ""
+echo "5. Seeding data..."
+docker compose run --rm peatio bundle exec rake db:seed
+
+echo ""
+echo "6. Starting all services..."
+docker compose up -d
+
+echo ""
+echo "================================"
+echo " Setup Complete!"
+echo "================================"
+echo ""
+echo " Services:"
+echo "   Peatio API:     http://localhost:3000"
+echo "   Barong Auth:    http://localhost:3001"
+echo "   RabbitMQ Admin: http://localhost:15672"
+echo ""
+echo " To view logs:   docker compose logs -f"
+echo " To stop:        docker compose down"
+echo " To restart:     docker compose restart"
+echo "================================"

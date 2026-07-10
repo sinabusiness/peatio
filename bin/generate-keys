@@ -1,0 +1,75 @@
+#!/bin/bash
+# Generate all security keys for exchange.صراف.com
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+mkdir -p config/secrets
+
+# Generate RSA key pairs
+echo "Generating RSA key pairs..."
+
+openssl genrsa -out config/secrets/rsa-key.pem 2048
+openssl rsa -in config/secrets/rsa-key.pem -pubout -out config/secrets/rsa-key.pub
+
+openssl genrsa -out config/secrets/management-api-key.pem 2048
+openssl rsa -in config/secrets/management-api-key.pem -pubout -out config/secrets/management-api-key.pub
+
+openssl genrsa -out config/secrets/events-api-key.pem 2048
+openssl rsa -in config/secrets/events-api-key.pem -pubout -out config/secrets/events-api-key.pub
+
+openssl genrsa -out config/secrets/barong-key.pem 2048
+openssl rsa -in config/secrets/barong-key.pem -pubout -out config/secrets/barong-key.pub
+
+# Secure permissions
+chmod 600 config/secrets/*.pem
+
+# Generate secret key bases
+SECRET_KEY_BASE=$(openssl rand -hex 64)
+BARONG_SECRET=$(openssl rand -hex 64)
+
+# Encode public keys as base64
+JWT_PUB=$(base64 -i config/secrets/rsa-key.pub | tr -d '\n')
+MGMT_PUB=$(base64 -i config/secrets/management-api-key.pub | tr -d '\n')
+MGMT_PRIV=$(base64 -i config/secrets/management-api-key.pem | tr -d '\n')
+EVENTS_PUB=$(base64 -i config/secrets/events-api-key.pub | tr -d '\n')
+EVENTS_PRIV=$(base64 -i config/secrets/events-api-key.pem | tr -d '\n')
+BARONG_PUB=$(base64 -i config/secrets/barong-key.pub | tr -d '\n')
+BARONG_PRIV=$(base64 -i config/secrets/barong-key.pem | tr -d '\n')
+
+# Generate database passwords
+MYSQL_PASS=$(openssl rand -base64 32)
+RABBIT_PASS=$(openssl rand -base64 32)
+
+# Write .env
+cat > .env << EOF
+MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
+RABBITMQ_USER=peatio
+RABBITMQ_PASS=${RABBIT_PASS}
+
+SECRET_KEY_BASE=${SECRET_KEY_BASE}
+JWT_PUBLIC_KEY=${JWT_PUB}
+MANAGEMENT_API_V1_PRIVATE_KEY=${MGMT_PRIV}
+MANAGEMENT_API_V1_PUBLIC_KEY=${MGMT_PUB}
+EVENTS_API_PRIVATE_KEY=${EVENTS_PRIV}
+EVENTS_API_PUBLIC_KEY=${EVENTS_PUB}
+
+BARONG_SECRET_KEY_BASE=${BARONG_SECRET}
+BARONG_JWT_PUBLIC_KEY=${BARONG_PUB}
+BARONG_JWT_PRIVATE_KEY=${BARONG_PRIV}
+
+WEB_CONCURRENCY=4
+RAILS_MAX_THREADS=8
+TIMEZONE=UTC
+
+EXCHANGE_DOMAIN=exchange.xn------gkc1bwbk0a2a.xn--com-lk8b
+BARONG_DOMAIN=http://barong:3001
+PEATIO_DOMAIN=http://peatio:3000
+EOF
+
+chmod 600 .env
+
+echo ""
+echo "Keys generated successfully in config/secrets/"
+echo ".env file created with all secrets"
+echo ""
+echo "WARNING: Keep these files secure. Never commit them to git."

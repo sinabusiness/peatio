@@ -1,6 +1,6 @@
-FROM ruby:2.7.8 as base
+FROM ruby:3.3.0 as base
 
-MAINTAINER lbellet@heliostech.fr
+LABEL maintainer="exchange.صراف.com"
 
 # By default image is built using RAILS_ENV=production.
 # You may want to customize it:

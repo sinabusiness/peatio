@@ -1,0 +1,78 @@
+- id:                     usd
+  name:                   US Dollar
+  type:                   fiat
+  status:                 enabled
+  precision:              2
+  position:               1
+
+- id:                     btc
+  name:                   Bitcoin
+  type:                   coin
+  status:                 enabled
+  precision:              8
+  position:               2
+  networks:
+    - blockchain_key: btc-mainnet
+      base_factor: 100_000_000
+
+- id:                     eth
+  name:                   Ethereum
+  type:                   coin
+  status:                 enabled
+  precision:              8
+  position:               3
+  networks:
+    - blockchain_key: eth-mainnet
+      base_factor: 1_000_000_000_000_000_000
+      options:
+        gas_limit: 21_000
+
+- id:                     usdt
+  name:                   Tether
+  type:                   coin
+  status:                 enabled
+  precision:              6
+  position:               4
+  networks:
+    - blockchain_key: eth-mainnet
+      base_factor: 1_000_000
+      options:
+        gas_limit: 60_000
+        erc20_contract_address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+
+- id:                     usdc
+  name:                   USD Coin
+  type:                   coin
+  status:                 enabled
+  precision:              6
+  position:               5
+  networks:
+    - blockchain_key: eth-mainnet
+      base_factor: 1_000_000
+      options:
+        gas_limit: 60_000
+        erc20_contract_address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+
+- id:                     trst
+  name:                   WeTrust
+  type:                   coin
+  status:                 enabled
+  precision:              8
+  position:               6
+  networks:
+    - blockchain_key: eth-mainnet
+      base_factor: 1_000_000_000_000_000_000
+      options:
+        gas_limit: 60_000
+
+- id:                     bnb
+  name:                   Binance Coin
+  type:                   coin
+  status:                 enabled
+  precision:              8
+  position:               7
+  networks:
+    - blockchain_key: bsc-mainnet
+      base_factor: 1_000_000_000_000_000_000
+      options:
+        gas_limit: 21_000
