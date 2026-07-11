@@ -1,71 +1,20 @@
-FROM ruby:3.3.0 as base
+FROM ruby:3.3.0-alpine as base
 
 LABEL maintainer="exchange.صراف.com"
 
-# By default image is built using RAILS_ENV=production.
-# You may want to customize it:
-#
-#   --build-arg RAILS_ENV=development
-#
-# See https://docs.docker.com/engine/reference/commandline/build/#set-build-time-variables-build-arg
-#
 ARG RAILS_ENV=production
-ENV RAILS_ENV=${RAILS_ENV} APP_HOME=/home/app KAIGARA_VERSION=0.1.34
+ENV RAILS_ENV=${RAILS_ENV} APP_HOME=/home/app TZ=UTC
 
-# Allow customization of user ID and group ID (it's useful when you use Docker bind mounts)
-ARG UID=1000
-ARG GID=1000
+RUN apk add --no-cache mysql-client mariadb-dev mariadb-connector-c-dev build-base
 
-# Set the TZ variable to avoid perpetual system calls to stat(/etc/localtime)
-ENV TZ=UTC
-
-# Create group "app" and user "app".
-RUN groupadd -r --gid ${GID} app \
-  && useradd --system --create-home --home ${APP_HOME} --shell /sbin/nologin --no-log-init \
-  --gid ${GID} --uid ${UID} app
-
-# Install system dependencies.
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install default-libmysqlclient-dev -y
-
-# Install Kaigara
-RUN curl -Lo /usr/bin/kaigara https://github.com/openware/kaigara/releases/download/${KAIGARA_VERSION}/kaigara \
-  && chmod +x /usr/bin/kaigara
-
+RUN mkdir -p $APP_HOME
 WORKDIR $APP_HOME
 
-# Install dependencies defined in Gemfile.
-COPY --chown=app:app Gemfile Gemfile.lock $APP_HOME/
-RUN mkdir -p /opt/vendor/bundle \
-  && gem install bundler:2.4.7 \
-  && chown -R app:app /opt/vendor $APP_HOME \
-  && su app -s /bin/bash -c "bundle install --jobs $(nproc) --path /opt/vendor/bundle"
+COPY Gemfile Gemfile.lock $APP_HOME/
+RUN gem install bundler:2.5.10 && bundle config build.mysql2 --with-ldflags=-L/usr/lib && bundle install --jobs 4
 
-# Copy application sources.
-COPY --chown=app:app . $APP_HOME
+COPY . $APP_HOME
+RUN bundle exec rake tmp:create 2>/dev/null || true
 
-# Switch to application user.
-USER app
-
-# Initialize application configuration & assets.
-RUN echo "# This file was overridden by default during docker image build." > Gemfile.plugin \
-  && ./bin/init_config \
-  && chmod +x ./bin/logger \
-  && bundle exec rake tmp:create
-
-# Expose port 3000 to the Docker host, so we can access it from the outside.
 EXPOSE 3000
-
-# The main command to run when the container starts.
 CMD ["bundle", "exec", "puma", "--config", "config/puma.rb"]
-
-# Extend base image with plugins.
-FROM base
-
-# Copy Gemfile.plugin for installing plugins.
-COPY --chown=app:app Gemfile.plugin Gemfile.lock $APP_HOME/
-
-# Install plugins.
-RUN gem install --local /gems/irix-3.2.1.gem
-
-RUN bundle install --path /opt/vendor/bundle --jobs $(nproc)
